@@ -1,4 +1,7 @@
-from flask import Flask, render_template, jsonify, Response, request
+# -----------------------------
+# Routes for HTML pages
+# -----------------------------
+from flask import Flask, render_template, jsonify, Response, request, redirect, url_for, session
 from flask_cors import CORS
 import threading
 import cv2
@@ -16,12 +19,37 @@ from config import MOTOR_PINS, DOOR_PINS, WRITE_API_KEY, THINGSPEAK_SENSOR_API_K
 app = Flask(__name__)
 CORS(app)
 
+# Secret key for sessions
+app.secret_key = "droid"   # 🔑 put a strong random key here
+
 # -----------------------------
-# Routes for HTML pages
+# Login System
 # -----------------------------
-@app.route('/')
-def index():
-    return render_template('index9.html')
+USERS = {"admin": "password123"}  # ✅ You can later replace with DB or CSV
+
+@app.route("/", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if username in USERS and USERS[username] == password:
+            session["user"] = username
+            return redirect(url_for("dashboard"))
+        else:
+            return render_template("login.html", error="Invalid username or password")
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    return render_template("dashboard.html")   # renamed your old index.html
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
 
 @app.route('/video_feed')
 def video_feed():

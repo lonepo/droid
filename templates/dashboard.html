@@ -33,6 +33,10 @@
 </head>
 <body>
 <div class="container">
+<p style="text-align:right;">
+    Logged in as: {{ session['user'] }} | <a href="{{ url_for('logout') }}">Logout</a>
+</p>
+
     <h1>IoT Web Interface</h1>
 
     <!-- Motor and Door Control -->
