@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Web Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 0; }
+        .container { max-width: 960px; margin: 20px auto; padding: 20px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; }
+        h1 { text-align: center; }
+        .content-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+        .section { flex: 1 1 45%; min-width: 200px; }
+        .section h2 { margin-top: 0; }
+        .button-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px; }
+        button { padding: 10px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; background-color: #007BFF; color: #fff; transition: background-color 0.3s; width: 100%; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; }
+        table th, table td { padding: 10px; border: 1px solid #ddd; }
+        table th { background-color: #007BFF; color: white; }
+        #video-container { margin-top: 20px; text-align: center; }
+        video { width: 100%; max-width: 500px; }
+        #emotion-loading { display: none; color: #007BFF; text-align: center; margin-top: 10px; }
+        #statusMessages { margin-top: 10px; padding: 10px; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        img#camera-stream { width: 100%; max-width: 500px; border: 2px solid #007BFF; border-radius: 5px; }
+
+        @media (max-width: 1024px) {
+            .content-row { flex-direction: column; }
+            .section { flex: 1 1 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>IoT Web Interface</h1>
+
+    <!-- Motor and Door Control -->
+    <div class="content-row">
+        <div class="section">
+            <h2>Motor Control</h2>
+            <div class="button-group">
+                <button onclick="sendCommand('motor_forward')">Forward</button>
+                <button onclick="sendCommand('motor_backward')">Backward</button>
+                <button onclick="sendCommand('motor_stop')">Stop</button>
+            </div>
+        </div>
+        <div class="section">
+            <h2>Door Control</h2>
+            <div class="button-group">
+                <button onclick="sendCommand('open_door')">Open Door</button>
+                <button onclick="sendCommand('close_door')">Close Door</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emotion and Decibel Detection -->
+    <div class="content-row">
+        <div class="section">
+            <h2>Emotion Recognition</h2>
+            <button onclick="startEmotionRecognition()">Start Emotion Recognition</button>
+            <div id="emotion-loading">Processing...</div>
+            <p id="emotion-result">Detected Emotion: <strong>None</strong></p>
+        </div>
+        <div class="section">
+            <h2>Sound Decibel Detection</h2>
+            <button onclick="sendCommand('detect_decibels')">Start Decibel Detection</button>
+            <p id="decibel-result">Detected Sound Emotion: <strong>None</strong></p>
+        </div>
+    </div>
+
+    <!-- Video & Audio Playback -->
+    <div class="content-row">
+        <div class="section">
+            <h2>Media Playback</h2>
+            <div class="button-group">
+                <button onclick="playVideo('/static/videos/video1.mp4')">Play Video 1</button>
+                <button onclick="playVideo('/static/videos/video2.mp4')">Play Video 2</button>
+                <button onclick="playVideo('/static/videos/video3.mp4')">Play Video 3</button>
+                <button onclick="playVideoFromURL('https://www.w3schools.com/html/movie.mp4')">Play W3Schools Video</button>
+                <button onclick="sendCommand('play_mp3', 'song1.mp3')">Play Song 1</button>
+            </div>
+        </div>
+        <div class="section" id="video-container">
+            <video id="video-player" controls>
+                <source id="video-source" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
+    <!-- Live Camera Feed -->
+    <div class="content-row">
+        <div class="section">
+            <h2>Live Camera Feed</h2>
+            <img id="camera-stream" src="/video_feed" alt="Live Camera">
+        </div>
+    </div>
+
+    <!-- Save / Upload / Medical Data -->
+    <div class="content-row">
+        <div class="section">
+            <h2>Save and Upload Data</h2>
+            <div class="button-group">
+                <button onclick="saveDataToCSV()">Save Data as CSV</button>
+                <button onclick="uploadToThingSpeak()">Upload to ThingSpeak</button>
+                <button onclick="getMedicalData()">Get Medical Data</button>
+            </div>
+            <div id="statusMessages"></div>
+        </div>
+    </div>
+
+    <div class="content-row">
+        <div class="section">
+            <h2>Medical Data</h2>
+            <table id="medical-data-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>ECG Signal</th>
+                        <th>SpO2</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Command sending function
+    function sendCommand(command, param='') {
+        fetch(`/api/${command}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ param: param })
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (command === 'detect_decibels') {
+                document.getElementById('decibel-result').innerHTML = `Detected Sound Emotion: <strong>${data.result}</strong>`;
+            }
+            alert(data.message || 'Command executed successfully!');
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+
+    // Emotion recognition
+    function startEmotionRecognition() {
+        const btn = document.querySelector('button[onclick="startEmotionRecognition()"]');
+        btn.disabled = true;
+        document.getElementById('emotion-loading').style.display = 'inline-block';
+
+        fetch('/api/recognize_emotion', { method: 'POST' })
+        .then(resp => resp.json())
+        .then(data => {
+            document.getElementById('emotion-result').innerHTML = `Detected Emotion: <strong>${data.result}</strong>`;
+        })
+        .catch(err => alert('Error: ' + err.message))
+        .finally(() => {
+            btn.disabled = false;
+            document.getElementById('emotion-loading').style.display = 'none';
+        });
+    }
+
+    // Video playback
+    function playVideo(videoPath) {
+        const player = document.getElementById('video-player');
+        const source = document.getElementById('video-source');
+        source.src = videoPath;
+        player.load();
+        player.play().catch(err => alert('Error playing video: ' + err.message));
+    }
+
+    function playVideoFromURL(url) {
+        playVideo(url);
+    }
+
+    // CSV & ThingSpeak
+    async function saveDataToCSV() {
+        try {
+            const timeResp = await fetch('/api/get_current_time', { method:'POST' });
+            const timeData = await timeResp.json();
+            const emotionFace = document.getElementById('emotion-result').innerText.replace('Detected Emotion: ','').trim();
+            const emotionVoice = document.getElementById('decibel-result').innerText.replace('Detected Sound Emotion: ','').trim();
+
+            const resp = await fetch('/api/save_to_csv', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ current_time: timeData.current_time, emotion_face: emotionFace, emotion_voice: emotionVoice })
+            });
+            const data = await resp.json();
+            showStatusMessage(data.message, !resp.ok);
+        } catch(err) { showStatusMessage('Error saving data: ' + err.message, true); }
+    }
+
+    async function uploadToThingSpeak() {
+        try {
+            const timeResp = await fetch('/api/get_current_time', { method:'POST' });
+            const timeData = await timeResp.json();
+            const faceEmotion = document.getElementById('emotion-result').innerText.replace('Detected Emotion: ','').trim();
+            const voiceEmotion = document.getElementById('decibel-result').innerText.replace('Detected Sound Emotion: ','').trim();
+
+            const resp = await fetch('/api/upload_to_thingspeak', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ current_time: timeData.current_time, emotion_face: faceEmotion, emotion_voice: voiceEmotion })
+            });
+            const data = await resp.json();
+            showStatusMessage(data.message, !resp.ok);
+        } catch(err) { showStatusMessage('Upload failed: ' + err.message, true); }
+    }
+
+    function showStatusMessage(msg, isError=false) {
+        const div = document.getElementById('statusMessages');
+        div.textContent = msg;
+        div.className = isError ? 'error' : 'success';
+        setTimeout(()=> div.textContent='', 5000);
+    }
+
+    // Medical Data Table
+    function getMedicalData() {
+        fetch('/api/get_medical_data', { method:'GET' })
+        .then(resp=>resp.json())
+        .then(data=>{
+            const tbody = document.getElementById('medical-data-table').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="3">No medical data available.</td></tr>'; return; }
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${row.Timestamp}</td><td>${row.ECG}</td><td>${row.SpO2}</td>`;
+                tbody.appendChild(tr);
+            });
+        }).catch(err=>alert('Error fetching medical data: '+err.message));
+    }
+</script>
+</body>
+</html>
