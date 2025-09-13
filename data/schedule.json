@@ -1,0 +1,6 @@
+{
+    "Emotion Recognition": 0,
+    "Sound Detection": 5,
+    "Motor Forward": 10,
+    "Door Open": 15
+}

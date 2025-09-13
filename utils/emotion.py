@@ -3,7 +3,8 @@ import numpy as np
 import sounddevice as sd
 import librosa
 from tensorflow.keras.models import load_model
-from config import FACE_MODEL, LABEL_NAMES
+from config import FACE_MODEL, LABEL_NAMES, VIDEO_MAP
+from utils.media import play_video, play_mp3, emotion_media_map
 
 # -----------------------------
 # Face Emotion Recognition
@@ -31,9 +32,18 @@ def recognize_face_emotion():
         roi_normalized = roi_resized / 255.0
         roi_input = np.expand_dims(roi_normalized, axis=0)
 
-        predictions = FACE_MODEL.predict(roi_input)
+        predictions = FACE_MODEL.predict(roi_input, verbose=0)
         emotion_idx = np.argmax(predictions)
-        return LABEL_NAMES[emotion_idx]
+        emotion = LABEL_NAMES[emotion_idx]
+
+        print(f"[Face] Detected emotion: {emotion}")
+
+        # 🔥 Trigger video playback
+        if emotion in VIDEO_MAP:
+            play_video(VIDEO_MAP[emotion])
+
+        return emotion
+
 
 # -----------------------------
 # Audio Emotion Recognition
@@ -43,17 +53,28 @@ def predict_audio_emotion(duration=3, fs=44100):
     Records audio from microphone and predicts emotion from the sound.
     """
     try:
-        print("Recording audio for emotion detection...")
+        print("[Audio] Recording... Please speak")
         recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
         sd.wait()
+        print("[Audio] Recording complete")
+
         audio_data = recording.flatten()
+
+        # Feature extraction
         mfccs = librosa.feature.mfcc(y=audio_data, sr=fs, n_mfcc=13)
         mfccs_mean = np.mean(mfccs.T, axis=0)
 
-        # Placeholder: use simple logic or load a trained model for audio emotion
-        # For now, we return a random choice or simple threshold
+        # Placeholder logic
         import random
         emotions = ["Happy", "Sad", "Angry", "Neutral"]
-        return random.choice(emotions)
+        emotion = random.choice(emotions)
+
+        print(f"[Audio] Detected emotion: {emotion}")
+
+        # 🔥 Trigger video playback
+        if emotion in VIDEO_MAP:
+            play_video(VIDEO_MAP[emotion])
+
+        return emotion
     except Exception as e:
         return f"Error: {str(e)}"

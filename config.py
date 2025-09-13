@@ -1,12 +1,26 @@
+import json
+import os
 from tensorflow.keras.models import load_model
 
-# -----------------------------
-# Face Emotion Recognition Model
-# -----------------------------
-FACE_MODEL = load_model("models/face_emotion_rec_v2.h5")
+# Paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "face_emotion_rec_v2.h5")
+LABELS_PATH = os.path.join(BASE_DIR, "models", "label.names")
+VIDEO_MAP_PATH = os.path.join(BASE_DIR, "data", "emotion_video_map.json")
 
-with open("models/label.names", "r") as f:
+# Load face emotion recognition model
+FACE_MODEL = load_model(MODEL_PATH)
+
+# Load label names
+with open(LABELS_PATH, "r") as f:
     LABEL_NAMES = [line.strip() for line in f]
+
+# Load emotion-to-video mapping
+if os.path.exists(VIDEO_MAP_PATH):
+    with open(VIDEO_MAP_PATH, "r") as f:
+        VIDEO_MAP = json.load(f)
+else:
+    VIDEO_MAP = {}  # fallback if file missing
 
 # -----------------------------
 # GPIO Pins
