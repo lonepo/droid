@@ -53,12 +53,12 @@
 
     <h2>📅 Schedule Feature Triggers</h2>
     <!-- Schedule form -->
-    <form method="POST" action="{{ url_for('save_schedule_route') }}">   <!-- >>> CHANGE -->
-
-        <table>
+    <form method="POST" action="{{ url_for('save_schedule_route') }}" id="scheduleForm">
+        <table id="scheduleTable">
             <tr>
                 <th>Feature</th>
                 <th>Delay (seconds)</th>
+                <th>Actions</th>
             </tr>
             {% for feature in features %}
             <tr>
@@ -66,6 +66,10 @@
                 <td>
                     <input type="number" name="delay_{{ feature }}" min="0" step="1"
                            value="{{ schedule.get(feature, 0) }}">
+                </td>
+                <td>
+                    <button type="button" onclick="addDelayAfter(this)" style="padding: 5px 10px; margin: 0 5px;">+</button>
+                    <button type="button" onclick="removeDelay(this)" style="padding: 5px 10px; margin: 0 5px;">-</button>
                 </td>
             </tr>
             {% endfor %}
@@ -75,6 +79,76 @@
         <p class="success">{{ schedule_success }}</p>
         {% endif %}
     </form>
+
+    <script>
+        function addDelayAfter(button) {
+            const row = button.closest('tr');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><i>Delay</i></td>
+                <td>
+                    <input type="number" name="additional_delay" min="0" step="1" value="0">
+                </td>
+                <td>
+                    <button type="button" onclick="removeDelay(this)" style="padding: 5px 10px">Remove</button>
+                </td>
+            `;
+            row.after(newRow);
+        }
+
+        function removeDelay(button) {
+            const row = button.closest('tr');
+            if (row.cells[0].innerText === 'Delay') {
+                row.remove();
+            }
+        }
+
+        document.getElementById('scheduleForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const schedule = {};
+            let currentFeature = null;
+            let totalDelay = 0;
+
+            // Process each row to accumulate delays
+            const rows = document.getElementById('scheduleTable').rows;
+            for(let i = 1; i < rows.length; i++) {
+                const cells = rows[i].cells;
+                const featureName = cells[0].innerText;
+                const delay = parseInt(cells[1].querySelector('input').value) || 0;
+
+                if(featureName !== 'Delay') {
+                    if(currentFeature) {
+                        schedule[currentFeature] = totalDelay;
+                    }
+                    currentFeature = featureName;
+                    totalDelay = delay;
+                } else {
+                    totalDelay += delay;
+                }
+            }
+            if(currentFeature) {
+                schedule[currentFeature] = totalDelay;
+            }
+
+            // Submit the accumulated schedule
+            fetch('/save_schedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(schedule)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Schedule saved successfully!');
+                location.reload();
+            })
+            .catch(error => {
+                alert('Error saving schedule: ' + error);
+            });
+        };
+    </script>
 
     <div class="back-link">
         <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
