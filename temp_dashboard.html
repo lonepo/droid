@@ -1,0 +1,29 @@
+    function startEmotionRecognition() {
+        document.getElementById("emotion-loading").style.display = "block";
+        document.getElementById("emotion-result").innerHTML = "Detected Emotion: <strong>Processing...</strong>";
+
+        fetch("/api/recognize_emotion", { method: "POST" })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Emotion recognition response:", data);  // Debug log
+                document.getElementById("emotion-loading").style.display = "none";
+                
+                // Use either result or emotion field
+                const detectedEmotion = data.result || data.emotion || "Unknown";
+                document.getElementById("emotion-result").innerHTML = 
+                    `Detected Emotion: <strong>${detectedEmotion}</strong>`;
+                
+                // Check both video and video_url fields
+                const videoToPlay = data.video_url || data.video;
+                if (videoToPlay) {
+                    console.log("Playing video:", videoToPlay);  // Debug log
+                    playVideo(videoToPlay);
+                }
+            })
+            .catch(error => {
+                document.getElementById("emotion-loading").style.display = "none";
+                document.getElementById("emotion-result").innerHTML =
+                    "<span class='error'>Error detecting emotion</span>";
+                console.error("Error:", error);
+            });
+    }

@@ -164,12 +164,16 @@ def recognize_emotion_api():
     # Choose one emotion (face priority > audio)
     detected = face_emotion if face_emotion != "No face detected" else audio_emotion
 
-    media = emotion_media_map.get(detected, {"song": None, "video": None})
+    # Get the media mappings
+    mapping = load_mapping()
+    video_file = mapping.get(detected)
+    if not video_file:
+        video_file = emotion_media_map.get(detected, {}).get("video")
 
     return jsonify({
         "emotion": detected,
-        "song_url": media["song"],
-        "video_url": media["video"]
+        "video_url": video_file,
+        "song_url": emotion_media_map.get(detected, {}).get("song")
     })
 
 
