@@ -217,6 +217,21 @@ function detectSoundEmotion() {
         playVideo(url);
     }
 
+    // Video playback function
+    function playVideo(videoName) {
+        const videoPlayer = document.getElementById('video-player');
+        const videoSource = document.getElementById('video-source');
+        const videoPath = `/static/videos/${videoName}`;
+        
+        videoSource.src = videoPath;
+        videoPlayer.load();
+        videoPlayer.play()
+            .catch(error => {
+                console.error("Error playing video:", error);
+                alert("Error playing video. Please make sure the video file exists.");
+            });
+    }
+
     // CSV & ThingSpeak
     async function saveDataToCSV() {
         try {
