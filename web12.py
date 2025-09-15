@@ -426,6 +426,39 @@ def mqtt_client_thread():
 app = Flask(__name__)
 CORS(app)
 
+# Routine executor
+import threading
+def execute_routine(routine):
+    for step in routine:
+        action = step.get('action')
+        param = step.get('param')
+        delay = step.get('delay', 0)
+        if action == 'play_video' and param:
+            play_video(os.path.join('static', 'videos', param))
+        elif action == 'play_audio' and param:
+            play_mp3(os.path.join('static', 'audio', param))
+        elif action == 'open_door':
+            operate_door(open_door=True)
+        elif action == 'close_door':
+            operate_door(open_door=False)
+        elif action == 'motor_forward':
+            motor.forward()
+        elif action == 'motor_backward':
+            motor.backward()
+        elif action == 'motor_stop':
+            motor.stop()
+        time.sleep(delay)
+
+@app.route('/api/run_routine', methods=['POST'])
+def run_routine():
+    try:
+        data = request.get_json()
+        routine = data.get('routine', [])
+        threading.Thread(target=execute_routine, args=(routine,), daemon=True).start()
+        return jsonify({'message': 'Routine started.'})
+    except Exception as e:
+        return jsonify({'message': f'Error: {str(e)}'}), 500
+
 @app.route('/')
 def index():
     return render_template('index9.html')
@@ -451,17 +484,7 @@ def door_open():
     return jsonify({"message": "Door opened."})
 
 @app.route('/api/close_door', methods=['POST'])
-def door_close():
-    operate_door(open_door=False)
-    return jsonify({"message": "Door closed."})
 
-# Route for live camera feed
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-# Updated emotion recognition to predict from current frame only
-@app.route('/api/recognize_emotion', methods=['POST'])
 def emotion_recognition():
     try:
         success, frame = cap.read()
@@ -485,12 +508,40 @@ def emotion_recognition():
         else:
             most_common_emotion = "Neutral"
 
-        return jsonify({"result": most_common_emotion})
+        # Load emotion to video mapping
+        import json
+        with open('emotion_video_map.json', 'r') as f:
+            emotion_video_map = json.load(f)
+
+        # Use emotion_media_map for audio
+        video_filename = emotion_video_map.get(most_common_emotion, None)
+        audio_filename = None
+        if most_common_emotion in emotion_media_map:
+            audio_filename = emotion_media_map[most_common_emotion].get('song', None)
+
+        return jsonify({
+            "result": most_common_emotion,
+            "video": video_filename,
+            "audio": audio_filename
+        })
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+        # Load emotion to video mapping
+        import json
+        with open('emotion_video_map.json', 'r') as f:
+            emotion_video_map = json.load(f)
+        video_filename = emotion_video_map.get(most_common_emotion, None)
+
+        return jsonify({
+            "result": most_common_emotion,
+            "video": video_filename
+        })
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
 @app.route('/api/detect_decibels', methods=['POST'])
+
 def decibel_detection():
     try:
         audio_filename = "mic_input.wav"
@@ -512,51 +563,65 @@ def decibel_detection():
 
         input_data_scaled = scaler.transform(input_data)
         prediction = rf.predict(input_data_scaled)
+        detected_emotion = prediction[0]
+
+        # Load emotion to video mapping
+        import json
+        with open('emotion_video_map.json', 'r') as f:
+            emotion_video_map = json.load(f)
+        video_filename = emotion_video_map.get(detected_emotion, None)
 
         return jsonify({
             "message": "Sound emotion detected successfully.",
-            "result": prediction[0]
+            "result": detected_emotion,
+            "video": video_filename
         })
     except Exception as e:
         return jsonify({"message": f"Error: {str(e)}"}), 500
 
 @app.route('/api/play_video', methods=['POST'])
-def play_video_endpoint():
-    data = request.get_json()
-    video_path = data.get('param', '')
+
+def decibel_detection():
     try:
-        play_video(video_path)
-        return jsonify({"message": f"Playing video: {video_path}"})
+        audio_filename = "mic_input.wav"
+        record_audio(filename=audio_filename, duration=5)
+
+        features = extract_features(audio_filename)
+
+        input_data = pd.DataFrame({
+            'Speech Duration': [features["duration"]],
+            'Pitch': [features["pitch"]],
+            'Speech Rate': [features["speech_rate"]],
+            'Jitter': [features["jitter"]],
+            'Shimmer': [features["shimmer"]],
+            'MFCCs_mean': [np.mean(features["mfccs"])],
+            'MFCCs_std': [np.std(features["mfccs"])],
+            'MFCCs_max': [np.max(features["mfccs"])],
+            'MFCCs_min': [np.min(features["mfccs"])],
+        })
+
+        input_data_scaled = scaler.transform(input_data)
+        prediction = rf.predict(input_data_scaled)
+        detected_emotion = prediction[0]
+
+        # Load emotion to video mapping
+        import json
+        with open('emotion_video_map.json', 'r') as f:
+            emotion_video_map = json.load(f)
+
+        video_filename = emotion_video_map.get(detected_emotion, None)
+        audio_filename = None
+        if detected_emotion in emotion_media_map:
+            audio_filename = emotion_media_map[detected_emotion].get('song', None)
+
+        return jsonify({
+            "message": "Sound emotion detected successfully.",
+            "result": detected_emotion,
+            "video": video_filename,
+            "audio": audio_filename
+        })
     except Exception as e:
         return jsonify({"message": f"Error: {str(e)}"}), 500
-
-@app.route('/api/play_mp3', methods=['POST'])
-def play_mp3_endpoint():
-    data = request.get_json()
-    mp3_path = data.get('param', '')
-    try:
-        play_mp3(mp3_path)
-        return jsonify({"message": f"Playing MP3: {mp3_path}"})
-    except Exception as e:
-        return jsonify({"message": f"Error: {str(e)}"}), 500
-
-@app.route('/api/get_current_time', methods=['POST'])
-def get_current_time():
-    try:
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        return jsonify({"current_time": current_time})
-    except Exception as e:
-        return jsonify({"message": f"Error: {str(e)}"}), 500
-
-@app.route('/api/save_to_csv', methods=['POST'])
-def save_to_csv_route():
-    try:
-        data = request.json
-        save_to_csv(data["current_time"], data["emotion_face"], data["emotion_voice"])
-        return jsonify({"message": "Data saved to CSV."})
-    except Exception as e:
-        return jsonify({"message": f"Error: {str(e)}"}), 500
-
 @app.route('/api/upload_to_thingspeak', methods=['POST'])
 def upload_to_thingspeak_route():
     try:

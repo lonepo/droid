@@ -172,17 +172,13 @@ function startEmotionRecognition() {
         .then(data => {
             console.log("Emotion recognition response:", data);  // Debug log
             document.getElementById("emotion-loading").style.display = "none";
-            
-            // Use either result or emotion field
             const detectedEmotion = data.result || data.emotion || "Unknown";
             document.getElementById("emotion-result").innerHTML = 
                 `Detected Emotion: <strong>${detectedEmotion}</strong>`;
-            
-            // Check both video and video_url fields
             const videoToPlay = data.video_url || data.video;
+            const audioToPlay = data.audio;
             if (videoToPlay) {
-                console.log("Playing video:", videoToPlay);  // Debug log
-                playVideo(videoToPlay);
+                playVideoWithAudio(videoToPlay, audioToPlay);
             }
         })
         .catch(error => {
@@ -198,14 +194,15 @@ function detectSoundEmotion() {
     document.getElementById("decibel-result").innerHTML =
         "Detected Sound Emotion: <strong>Listening...</strong>";
 
-    fetch("/api/detect_decibels", { method: "POST" })   // ✅ correct endpoint
+    fetch("/api/detect_decibels", { method: "POST" })
         .then(response => response.json())
         .then(data => {
             document.getElementById("decibel-result").innerHTML =
                 "Detected Sound Emotion: <strong>" + data.result + "</strong>";
-
-            if (data.video) {
-                playVideo(data.video);  // ✅ play mapped video for voice emotion
+            const videoToPlay = data.video;
+            const audioToPlay = data.audio;
+            if (videoToPlay) {
+                playVideoWithAudio(videoToPlay, audioToPlay);
             }
         })
         .catch(error => {
@@ -222,19 +219,35 @@ function detectSoundEmotion() {
         playVideo(url);
     }
 
-    // Video playback function
-    function playVideo(videoName) {
+    // Video + audio playback function
+    function playVideoWithAudio(videoName, audioName) {
         const videoPlayer = document.getElementById('video-player');
         const videoSource = document.getElementById('video-source');
         const videoPath = `/static/videos/${videoName}`;
-        
         videoSource.src = videoPath;
         videoPlayer.load();
         videoPlayer.play()
+            .then(() => {
+                // When video ends, play audio
+                videoPlayer.onended = function() {
+                    if (audioName) {
+                        playAudio(audioName);
+                    }
+                };
+            })
             .catch(error => {
                 console.error("Error playing video:", error);
                 alert("Error playing video. Please make sure the video file exists.");
             });
+    }
+
+    function playAudio(audioName) {
+        const audioPath = `/static/audio/${audioName}`;
+        const audio = new Audio(audioPath);
+        audio.play().catch(error => {
+            console.error("Error playing audio:", error);
+            alert("Error playing audio. Please make sure the audio file exists.");
+        });
     }
 
     // CSV & ThingSpeak

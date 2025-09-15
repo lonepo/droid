@@ -129,104 +129,67 @@
         </div>
 
         <div class="settings-column">
-            <h2>📅 Schedule Feature Triggers</h2>
-            <!-- Schedule form -->
-    <form method="POST" action="{{ url_for('save_schedule_route') }}" id="scheduleForm">
-        <table id="scheduleTable">
-            <tr>
-                <th>Feature</th>
-                <th>Delay (seconds)</th>
-                <th>Actions</th>
-            </tr>
-            {% for feature in features %}
-            <tr>
-                <td>{{ feature }}</td>
-                <td>
-                    <input type="number" name="delay_{{ feature }}" min="0" step="1"
-                           value="{{ schedule.get(feature, 0) }}">
-                </td>
-                <td>
-                    <button type="button" onclick="addDelayAfter(this)" class="action-button">+</button>
-                    <button type="button" onclick="removeDelay(this)" class="action-button">-</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        <button type="submit">💾 Save Schedule</button>
-        {% if schedule_success %}
-        <p class="success">{{ schedule_success }}</p>
-        {% endif %}
-    </form>
-
-    <script>
-        function addDelayAfter(button) {
-            const row = button.closest('tr');
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td><i>Delay</i></td>
-                <td>
-                    <input type="number" name="additional_delay" min="0" step="1" value="0">
-                </td>
-                <td>
-                    <button type="button" onclick="removeDelay(this)" style="padding: 5px 10px">Remove</button>
-                </td>
-            `;
-            row.after(newRow);
-        }
-
-        function removeDelay(button) {
-            const row = button.closest('tr');
-            if (row.cells[0].innerText === 'Delay') {
-                row.remove();
-            }
-        }
-
-        document.getElementById('scheduleForm').onsubmit = function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const schedule = {};
-            let currentFeature = null;
-            let totalDelay = 0;
-
-            // Process each row to accumulate delays
-            const rows = document.getElementById('scheduleTable').rows;
-            for(let i = 1; i < rows.length; i++) {
-                const cells = rows[i].cells;
-                const featureName = cells[0].innerText;
-                const delay = parseInt(cells[1].querySelector('input').value) || 0;
-
-                if(featureName !== 'Delay') {
-                    if(currentFeature) {
-                        schedule[currentFeature] = totalDelay;
+                <h2>📅 Custom Routine Builder</h2>
+                <form id="routineForm">
+                    <table id="routineTable">
+                        <tr>
+                            <th>Order</th>
+                            <th>Action</th>
+                            <th>Parameter (optional)</th>
+                            <th>Delay (seconds)</th>
+                            <th>Remove</th>
+                        </tr>
+                    </table>
+                    <button type="button" onclick="addRoutineStep()">➕ Add Step</button>
+                    <button type="submit">▶️ Run Routine</button>
+                    <div id="routineStatus"></div>
+                </form>
+                <script>
+                    const actions = [
+                        { value: 'play_video', label: 'Play Video' },
+                        { value: 'play_audio', label: 'Play Audio' },
+                        { value: 'open_door', label: 'Open Door' },
+                        { value: 'close_door', label: 'Close Door' },
+                        { value: 'motor_forward', label: 'Motor Forward' },
+                        { value: 'motor_backward', label: 'Motor Backward' },
+                        { value: 'motor_stop', label: 'Motor Stop' }
+                    ];
+                    function addRoutineStep() {
+                        const table = document.getElementById('routineTable');
+                        const row = table.insertRow(-1);
+                        row.innerHTML = `
+                            <td>${table.rows.length - 1}</td>
+                            <td><select>${actions.map(a => `<option value='${a.value}'>${a.label}</option>`).join('')}</select></td>
+                            <td><input type='text' placeholder='e.g. video1.mp4 or song1.mp3'></td>
+                            <td><input type='number' min='0' step='1' value='0'></td>
+                            <td><button type='button' onclick='this.closest("tr").remove()'>🗑️</button></td>
+                        `;
                     }
-                    currentFeature = featureName;
-                    totalDelay = delay;
-                } else {
-                    totalDelay += delay;
-                }
-            }
-            if(currentFeature) {
-                schedule[currentFeature] = totalDelay;
-            }
-
-            // Submit the accumulated schedule
-            fetch('/save_schedule', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(schedule)
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert('Schedule saved successfully!');
-                location.reload();
-            })
-            .catch(error => {
-                alert('Error saving schedule: ' + error);
-            });
-        };
-    </script>
+                    document.getElementById('routineForm').onsubmit = function(e) {
+                        e.preventDefault();
+                        const table = document.getElementById('routineTable');
+                        const routine = [];
+                        for(let i=1; i<table.rows.length; i++) {
+                            const cells = table.rows[i].cells;
+                            const action = cells[1].querySelector('select').value;
+                            const param = cells[2].querySelector('input').value;
+                            const delay = parseInt(cells[3].querySelector('input').value) || 0;
+                            routine.push({ action, param, delay });
+                        }
+                        fetch('/api/run_routine', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ routine })
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            document.getElementById('routineStatus').textContent = data.message;
+                        })
+                        .catch(err => {
+                            document.getElementById('routineStatus').textContent = 'Error: ' + err.message;
+                        });
+                    };
+                </script>
         </div>
     </div>
     <div class="back-link">
