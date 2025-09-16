@@ -346,12 +346,15 @@ def save_schedule_route():   # >>> CHANGE (keep route separate)
 # -----------------------------
 # Feature → Action Map
 # -----------------------------
-FEATURE_ACTIONS = {   # >>> ADD
+# app.py
+
+FEATURE_ACTIONS = {
     "Emotion Recognition": recognize_face_emotion,
     "Sound Detection": predict_audio_emotion,
-    "Motor Forward": motor.forward,
+    "Motor Forward": lambda: motor.forward(duration=5, speed=80),  # run 5s then stop
     "Door Open": lambda: operate_door("open")
 }
+
 
 
 def run_scheduled_tasks():
