@@ -26,16 +26,16 @@ import RPi.GPIO as GPIO
 import paho.mqtt.client as mqtt
 import threading
 
-# ThingSpeak API configurations
-API_URL = "https://api.thingspeak.com/update"
-WRITE_API_KEY = "REDACTED_THINGSPEAK_WRITE_KEY"  # Emotion data channel
-THINGSPEAK_SENSOR_API_KEY = "REDACTED_THINGSPEAK_SENSOR_KEY"  # Sensor data channel
+from config import (
+    API_URL,
+    MQTT_BROKER,
+    MQTT_PORT,
+    MQTT_TOPIC_ECG,
+    MQTT_TOPIC_SPO2,
+    THINGSPEAK_SENSOR_API_KEY,
+    WRITE_API_KEY,
+)
 
-# MQTT configurations
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_TOPIC_ECG = "health/ecg"
-MQTT_TOPIC_SPO2 = "health/spo2"
 SENSOR_CSV_FILE = "sensor_data.csv"
 
 # GPIO Setup

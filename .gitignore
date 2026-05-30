@@ -1,0 +1,8 @@
+# Secrets
+token.txt
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]

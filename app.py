@@ -41,7 +41,7 @@ def save_schedule(schedule):
 # -----------------------------
 app = Flask(__name__)
 CORS(app)
-app.secret_key = "droid"   # Use a stronger random secret in production
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "droid")
 
 # File for admin video mapping
 MAP_FILE = os.path.join("data", "emotion_video_map.json")

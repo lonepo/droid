@@ -22,8 +22,8 @@ DOOR_PINS = {"IN5": 19, "IN6": 26}
 # -----------------------------
 # ThingSpeak / MQTT
 # -----------------------------
-WRITE_API_KEY = "REDACTED_THINGSPEAK_WRITE_KEY"
-THINGSPEAK_SENSOR_API_KEY = "REDACTED_THINGSPEAK_SENSOR_KEY"
+WRITE_API_KEY = os.getenv("THINGSPEAK_WRITE_API_KEY", "")
+THINGSPEAK_SENSOR_API_KEY = os.getenv("THINGSPEAK_SENSOR_API_KEY", "")
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 
