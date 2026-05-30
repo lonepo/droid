@@ -6,3 +6,7 @@ token.txt
 # Python
 __pycache__/
 *.py[cod]
+
+# Local virtualenvs
+.venv/
+.venv-tools/
